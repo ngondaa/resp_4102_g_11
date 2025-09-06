@@ -142,16 +142,49 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(20.0),
-                            child: _model.qrData.isNotEmpty
-                                ? QrImageView(
-                                    data: _model.qrData,
-                                    version: QrVersions.auto,
-                                    size: 320.0,
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.black,
-                                  )
-                                : const Center(
-                                    child: CircularProgressIndicator(),
+                            child: _model.qrVisible
+                                ? (_model.qrData.isNotEmpty
+                                    ? QrImageView(
+                                        data: _model.qrData,
+                                        version: QrVersions.auto,
+                                        size: 320.0,
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: Colors.black,
+                                      )
+                                    : const Center(
+                                        child: CircularProgressIndicator(),
+                                      ))
+                                : Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.timer_off_rounded,
+                                          size: 64.0,
+                                          color: FlutterFlowTheme.of(context).secondaryText,
+                                        ),
+                                        const SizedBox(height: 16.0),
+                                        Text(
+                                          'QR Code Expired',
+                                          style: FlutterFlowTheme.of(context).headlineSmall.override(
+                                            font: GoogleFonts.interTight(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            color: FlutterFlowTheme.of(context).secondaryText,
+                                            letterSpacing: 0.0,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8.0),
+                                        Text(
+                                          'Please generate a new QR code',
+                                          style: FlutterFlowTheme.of(context).bodyMedium.override(
+                                            font: GoogleFonts.inter(),
+                                            color: FlutterFlowTheme.of(context).secondaryText,
+                                            letterSpacing: 0.0,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                           ),
                         ),
@@ -165,7 +198,9 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                             width: 72.0,
                             height: 20.0,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF39D27F),
+                              color: _model.timeRemaining <= 0 
+                                  ? const Color(0xFFE53E3E) // Red when expired
+                                  : const Color(0xFF39D27F), // Green when active
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             child: Padding(
@@ -184,30 +219,55 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                                   ValueListenableBuilder<int>(
                                     valueListenable: _model.timerNotifier,
                                     builder: (context, timeRemaining, child) {
+                                      if (timeRemaining <= 0) {
+                                        return Text(
+                                          'EXPIRED',
+                                          textAlign: TextAlign.center,
+                                          style: FlutterFlowTheme.of(context)
+                                              .bodyMedium
+                                              .override(
+                                                font: GoogleFonts.inter(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontStyle:
+                                                      FlutterFlowTheme.of(context)
+                                                          .bodyMedium
+                                                          .fontStyle,
+                                                ),
+                                                color: FlutterFlowTheme.of(context)
+                                                    .primaryBackground,
+                                                letterSpacing: 0.0,
+                                                fontWeight: FontWeight.w600,
+                                                fontStyle:
+                                                    FlutterFlowTheme.of(context)
+                                                        .bodyMedium
+                                                        .fontStyle,
+                                              ),
+                                        );
+                                      }
                                       final minutes = (timeRemaining ~/ 60).toString().padLeft(2, '0');
                                       final seconds = (timeRemaining % 60).toString().padLeft(2, '0');
                                       return Text(
                                         '$minutes:$seconds',
                                         textAlign: TextAlign.center,
-                                    style: FlutterFlowTheme.of(context)
-                                        .bodyMedium
-                                        .override(
-                                          font: GoogleFonts.inter(
-                                            fontWeight: FontWeight.w600,
-                                            fontStyle:
-                                                FlutterFlowTheme.of(context)
-                                                    .bodyMedium
-                                                    .fontStyle,
-                                          ),
-                                          color: FlutterFlowTheme.of(context)
-                                              .primaryBackground,
-                                          letterSpacing: 0.0,
-                                          fontWeight: FontWeight.w600,
-                                          fontStyle:
-                                              FlutterFlowTheme.of(context)
-                                                  .bodyMedium
-                                                  .fontStyle,
-                                        ),
+                                        style: FlutterFlowTheme.of(context)
+                                            .bodyMedium
+                                            .override(
+                                              font: GoogleFonts.inter(
+                                                fontWeight: FontWeight.w600,
+                                                fontStyle:
+                                                    FlutterFlowTheme.of(context)
+                                                        .bodyMedium
+                                                        .fontStyle,
+                                              ),
+                                              color: FlutterFlowTheme.of(context)
+                                                  .primaryBackground,
+                                              letterSpacing: 0.0,
+                                              fontWeight: FontWeight.w600,
+                                              fontStyle:
+                                                  FlutterFlowTheme.of(context)
+                                                      .bodyMedium
+                                                      .fontStyle,
+                                            ),
                                       );
                                     },
                                   ),

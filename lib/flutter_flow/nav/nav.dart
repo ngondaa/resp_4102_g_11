@@ -48,12 +48,17 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
         FFRoute(
           name: HomePageWidget.routeName,
           path: HomePageWidget.routePath,
-          builder: (context, params) => const HomePageWidget(),
+          builder: (context, params) => HomePageWidget(
+            merchantId: params.getParam('merchantId', ParamType.String),
+          ),
         ),
         FFRoute(
           name: DisplayQrPageWidget.routeName,
           path: DisplayQrPageWidget.routePath,
-          builder: (context, params) => const DisplayQrPageWidget(),
+          builder: (context, params) => DisplayQrPageWidget(
+            merchantId: params.getParam('merchantId', ParamType.String),
+            transactionAmount: params.getParam('transactionAmount', ParamType.String),
+          ),
         )
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );

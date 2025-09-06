@@ -13,8 +13,9 @@ class DisplayQrPageModel extends FlutterFlowModel<DisplayQrPageWidget> {
   String qrData = '';
   
   Timer? _timer;
-  int timeRemaining = 300; // 5 minutes in seconds
-  final ValueNotifier<int> timerNotifier = ValueNotifier<int>(300);
+  int timeRemaining = 180; // 3 minutes in seconds
+  final ValueNotifier<int> timerNotifier = ValueNotifier<int>(180);
+  bool qrVisible = true;
   
   @override
   void initState(BuildContext context) {
@@ -34,6 +35,9 @@ class DisplayQrPageModel extends FlutterFlowModel<DisplayQrPageWidget> {
         timeRemaining--;
         timerNotifier.value = timeRemaining;
       } else {
+        // Hide QR code when timer reaches 0
+        qrVisible = false;
+        timerNotifier.value = 0;
         timer.cancel();
       }
     });

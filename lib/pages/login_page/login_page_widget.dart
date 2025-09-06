@@ -352,19 +352,31 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                     ),
                     FFButtonWidget(
                       onPressed: () async {
-                        final email = _model.textController1?.text.trim() ?? '';
+                        final merchantId = _model.textController1?.text.trim() ?? '';
                         final password = _model.textController2?.text ?? '';
-                        if (email.isEmpty || password.isEmpty) {
+                        
+                        if (merchantId.isEmpty || password.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter email and password.')),
+                            const SnackBar(content: Text('Please enter Merchant ID and password.')),
                           );
                           return;
                         }
+                        
+                        // Validate Merchant ID format (MRCH followed by 4 digits)
+                        final merchantIdRegex = RegExp(r'^MRCH\d{4}$');
+                        if (!merchantIdRegex.hasMatch(merchantId)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Merchant ID must be in format MRCH0002')),
+                          );
+                          return;
+                        }
+                        
                         try {
+                          // Store merchant ID for use in other pages
                           // For now, just navigate to home page without authentication
                           // TODO: Implement proper Supabase authentication
                           if (context.mounted) {
-                            context.pushNamed(HomePageWidget.routeName);
+                            context.pushNamed(HomePageWidget.routeName, extra: {'merchantId': merchantId});
                           }
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(

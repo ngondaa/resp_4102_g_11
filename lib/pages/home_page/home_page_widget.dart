@@ -10,7 +10,9 @@ import 'home_page_model.dart';
 export 'home_page_model.dart';
 
 class HomePageWidget extends StatefulWidget {
-  const HomePageWidget({super.key});
+  const HomePageWidget({super.key, this.merchantId});
+
+  final String? merchantId;
 
   static String routeName = 'HomePage';
   static String routePath = '/homePage';
@@ -29,7 +31,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.initState();
     _model = createModel(context, () => HomePageModel());
 
-    _model.textController1 ??= TextEditingController(text: 'MRCHXX1');
+    // Use the merchant ID from login or default
+    _model.textController1 ??= TextEditingController(text: widget.merchantId ?? 'MRCH0002');
     _model.textFieldFocusNode1 ??= FocusNode();
 
     _model.textController2 ??= TextEditingController();
@@ -358,14 +361,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           return;
                         }
                         
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DisplayQrPageWidget(
-                              merchantId: merchantId,
-                              transactionAmount: transactionAmount,
-                            ),
-                          ),
+                        context.pushNamed(
+                          DisplayQrPageWidget.routeName,
+                          extra: {
+                            'merchantId': merchantId,
+                            'transactionAmount': transactionAmount,
+                          },
                         );
                       },
                       text: 'Generate QR',
