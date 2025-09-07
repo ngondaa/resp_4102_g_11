@@ -194,8 +194,10 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                           padding: const EdgeInsetsDirectional.fromSTEB(
                               0.0, 16.0, 16.0, 0.0),
                           child: Container(
-                            width: 72.0,
                             height: 20.0,
+                            constraints: const BoxConstraints(
+                              minWidth: 56.0,
+                            ),
                             decoration: BoxDecoration(
                               color: _model.timeRemaining <= 0 
                                   ? const Color(0xFFE53E3E) // Red when expired
@@ -203,11 +205,10 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.all(2.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                               child: Row(
-                                mainAxisSize: MainAxisSize.max,
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.access_time_rounded,
@@ -215,6 +216,7 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                                         .primaryText,
                                     size: 16.0,
                                   ),
+                                  const SizedBox(width: 4.0),
                                   ValueListenableBuilder<int>(
                                     valueListenable: _model.timerNotifier,
                                     builder: (context, timeRemaining, child) {
@@ -241,6 +243,9 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                                                         .bodyMedium
                                                         .fontStyle,
                                               ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
                                         );
                                       }
                                       final minutes = (timeRemaining ~/ 60).toString().padLeft(2, '0');
@@ -267,6 +272,9 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                                                       .bodyMedium
                                                       .fontStyle,
                                             ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
                                       );
                                     },
                                   ),
