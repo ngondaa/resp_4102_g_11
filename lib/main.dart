@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import 'flutter_flow/flutter_flow_util.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoRouter.optionURLReflectsImperativeAPIs = true;
   usePathUrlStrategy();
-  
+
   // Suppress Vulkan driver warnings
   debugPrint = (String? message, {int? wrapWidth}) {
     if (message != null && !message.contains('Known bad Vulkan driver')) {
@@ -21,12 +21,12 @@ void main() async {
 
   // Temporarily comment out Supabase initialization to get app running
   // TODO: Add your actual Supabase credentials here
-  /*
+
   await Supabase.initialize(
-    url: 'https://your-project.supabase.co',
-    anonKey: 'your-anon-key-here',
+    url: 'https://yqcxumvpvosrqwbcdcun.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY3h1bXZwdm9zcnF3YmNkY3VuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0MjU2NDIsImV4cCI6MjA3MDAwMTY0Mn0.gHBxTmOvCCCDqIIZM9gpSvsxvBnUmTRUngcK0pTQ1Tk',
   );
-  */
 
   runApp(const MyApp());
 }
