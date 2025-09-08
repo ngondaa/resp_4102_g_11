@@ -96,7 +96,7 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                           obscureText: false,
                           decoration: InputDecoration(
                             isDense: false,
-                            labelText: 'Merchant ID',
+                            labelText: 'Email',
                             labelStyle: FlutterFlowTheme.of(context)
                                 .labelLarge
                                 .override(
@@ -355,19 +355,11 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                         
                         if (merchantId.isEmpty || password.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter Merchant ID and password.')),
+                            const SnackBar(content: Text('Please enter your email and password.')),
                           );
                           return;
                         }
                         
-                        // Validate Merchant ID format (MRCH followed by 4 digits)
-                        final merchantIdRegex = RegExp(r'^MRCH\d{4}$');
-                        if (!merchantIdRegex.hasMatch(merchantId)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Merchant ID must be in format MRCH0002')),
-                          );
-                          return;
-                        }
                         
                         try {
                           // Store merchant ID for use in other pages
