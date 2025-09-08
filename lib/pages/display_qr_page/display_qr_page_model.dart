@@ -2,6 +2,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import 'display_qr_page_widget.dart' show DisplayQrPageWidget;
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '/services/paychangu_service.dart';
 
 class DisplayQrPageModel extends FlutterFlowModel<DisplayQrPageWidget> {
   ///  State fields for stateful widgets in this page.
@@ -44,8 +45,21 @@ class DisplayQrPageModel extends FlutterFlowModel<DisplayQrPageWidget> {
   }
   
   void generateQrData() {
-    // Create JSON-like string for QR code data
-    qrData = '{"merchantId":"$merchantId","amount":"$transactionAmount","transactionId":"$transactionId","token":"$securityToken","timestamp":"${DateTime.now().toIso8601String()}"}';
+    // Generate PayChangu payment URL for QR code
+    final amount = double.tryParse(transactionAmount) ?? 0.0;
+    
+    if (PayChanguService.instance.isInitialized) {
+      qrData = PayChanguService.instance.generatePaymentUrl(
+        merchantId: merchantId,
+        amount: amount,
+        firstName: 'Customer',
+        lastName: 'Name',
+        email: 'customer@example.com',
+      );
+    } else {
+      // Fallback to JSON data if PayChangu is not available
+      qrData = '{"merchantId":"$merchantId","amount":"$transactionAmount","transactionId":"$transactionId","token":"$securityToken","timestamp":"${DateTime.now().toIso8601String()}"}';
+    }
   }
   
   String get formattedTime {

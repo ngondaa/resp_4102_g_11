@@ -28,6 +28,7 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   supabase_flutter: ^2.0.0
+  paychangu_flutter: ^0.0.1
   auto_size_text: 3.0.0
   cached_network_image: 3.4.1
   cached_network_image_platform_interface: 4.1.1

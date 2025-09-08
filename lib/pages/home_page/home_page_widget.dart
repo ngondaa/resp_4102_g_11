@@ -5,6 +5,7 @@ import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '/services/paychangu_service.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
@@ -43,6 +44,153 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     _model.dispose();
 
     super.dispose();
+  }
+
+  Future<void> _handlePaymentSuccess(Map<String, dynamic> response) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final verification = await PayChanguService.instance.verifyTransaction(response['tx_ref']);
+      final isValid = PayChanguService.instance.validatePayment(
+        verification,
+        expectedTxRef: response['tx_ref'],
+        expectedCurrency: 'MWK',
+        expectedAmount: double.parse(_model.textController2?.text ?? '0'), // Amount in MWK
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (isValid) {
+        _showSuccessDialog(verification);
+      } else {
+        _showErrorDialog('Payment validation failed');
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      _showErrorDialog('Verification failed: $e');
+    }
+  }
+
+  void _showSuccessDialog(dynamic verification) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Successful'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Amount: ${verification.data.amount} ${verification.data.currency}'),
+            Text('Transaction ID: ${verification.data.txRef}'),
+            Text('Status: ${verification.data.status}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Clear the form
+              _model.textController2?.clear();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _launchPayChanguPayment() {
+    if (!PayChanguService.instance.isInitialized) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PayChangu service is not available. Please try again later.'),
+        ),
+      );
+      return;
+    }
+
+    final merchantId = _model.textController1?.text ?? '';
+    final transactionAmount = _model.textController2?.text ?? '';
+    
+    if (merchantId.isEmpty || transactionAmount.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in both Merchant ID and Transaction Amount'),
+        ),
+      );
+      return;
+    }
+
+    final amount = double.tryParse(transactionAmount);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid transaction amount'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final request = PayChanguService.instance.createPaymentRequest(
+        merchantId: merchantId,
+        amount: amount,
+        firstName: 'Customer', // You might want to collect this from user
+        lastName: 'Name', // You might want to collect this from user
+        email: 'customer@example.com', // You might want to collect this from user
+      );
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Payment'),
+              backgroundColor: FlutterFlowTheme.of(context).primary,
+            ),
+            body: PayChanguService.instance.launchPayment(
+              request: request,
+              onSuccess: _handlePaymentSuccess,
+              onError: (error) {
+                Navigator.of(context).pop();
+                _showErrorDialog('Payment failed: $error');
+              },
+              onCancel: () {
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Payment cancelled')),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creating payment request: $e'),
+        ),
+      );
+    }
   }
 
   @override
@@ -110,14 +258,12 @@ class _HomePageWidgetState extends State<HomePageWidget> {
         ),
         body: SafeArea(
           top: true,
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 8.0),
@@ -140,10 +286,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           ),
                     ),
                   ),
-                  SizedBox(
-                    width: 360.0,
-                    child: TextFormField(
-                      controller: _model.textController1,
+                  TextFormField(
+                    controller: _model.textController1,
                       focusNode: _model.textFieldFocusNode1,
                       autofocus: false,
                       readOnly: true,
@@ -224,7 +368,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                       validator:
                           _model.textController1Validator.asValidator(context),
                     ),
-                  ),
                   Padding(
                     padding:
                         const EdgeInsetsDirectional.fromSTEB(0.0, 32.0, 0.0, 8.0),
@@ -247,13 +390,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           ),
                     ),
                   ),
-                  Container(
-                    width: 200.0,
-                  ),
-                  SizedBox(
-                    width: 360.0,
-                    child: TextFormField(
-                      controller: _model.textController2,
+                  const SizedBox(height: 16.0),
+                  TextFormField(
+                    controller: _model.textController2,
                       focusNode: _model.textFieldFocusNode2,
                       autofocus: false,
                       obscureText: false,
@@ -339,75 +478,97 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                       validator:
                           _model.textController2Validator.asValidator(context),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp('[0-9]'))
+                        FilteringTextInputFormatter.allow(RegExp('[0-9.]'))
                       ],
                     ),
-                  ),
                   Padding(
                     padding:
                         const EdgeInsetsDirectional.fromSTEB(0.0, 32.0, 0.0, 0.0),
-                    child: FFButtonWidget(
-                      onPressed: () async {
-                        final merchantId = _model.textController1?.text ?? '';
-                        final transactionAmount = _model.textController2?.text ?? '';
-                        
-                        if (merchantId.isEmpty || transactionAmount.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please fill in both Merchant ID and Transaction Amount'),
-                            ),
-                          );
-                          return;
-                        }
-                        
-                        context.pushNamed(
-                          DisplayQrPageWidget.routeName,
-                          extra: {
-                            'merchantId': merchantId,
-                            'transactionAmount': transactionAmount,
-                          },
-                        );
-                      },
-                      text: 'Generate QR',
-                      icon: const Icon(
-                        Icons.qr_code_rounded,
-                        size: 20.0,
-                      ),
-                      options: FFButtonOptions(
-                        width: 360.0,
-                        height: 50.0,
-                        padding: const EdgeInsetsDirectional.fromSTEB(
-                            16.0, 0.0, 16.0, 0.0),
-                        iconPadding:
-                            const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
-                        color: FlutterFlowTheme.of(context).primary,
-                        textStyle:
-                            FlutterFlowTheme.of(context).titleSmall.override(
-                                  font: GoogleFonts.interTight(
-                                    fontWeight: FlutterFlowTheme.of(context)
-                                        .titleSmall
-                                        .fontWeight,
-                                    fontStyle: FlutterFlowTheme.of(context)
-                                        .titleSmall
-                                        .fontStyle,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FFButtonWidget(
+                            onPressed: () async {
+                              final merchantId = _model.textController1?.text ?? '';
+                              final transactionAmount = _model.textController2?.text ?? '';
+                              
+                              if (merchantId.isEmpty || transactionAmount.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please fill in both Merchant ID and Transaction Amount'),
                                   ),
-                                  color: Colors.white,
-                                  letterSpacing: 0.0,
-                                  fontWeight: FlutterFlowTheme.of(context)
-                                      .titleSmall
-                                      .fontWeight,
-                                  fontStyle: FlutterFlowTheme.of(context)
-                                      .titleSmall
-                                      .fontStyle,
+                                );
+                                return;
+                              }
+                              
+                              context.pushNamed(
+                                DisplayQrPageWidget.routeName,
+                                extra: {
+                                  'merchantId': merchantId,
+                                  'transactionAmount': transactionAmount,
+                                },
+                              );
+                            },
+                            text: 'Generate Payment QR',
+                            icon: const Icon(
+                              Icons.qr_code_2_rounded,
+                              size: 20.0,
+                            ),
+                            options: FFButtonOptions(
+                              height: 50.0,
+                              padding: const EdgeInsetsDirectional.fromSTEB(16.0, 0.0, 16.0, 0.0),
+                              iconPadding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                              color: FlutterFlowTheme.of(context).primary,
+                              textStyle: FlutterFlowTheme.of(context).titleSmall.override(
+                                font: GoogleFonts.interTight(
+                                  fontWeight: FlutterFlowTheme.of(context).titleSmall.fontWeight,
+                                  fontStyle: FlutterFlowTheme.of(context).titleSmall.fontStyle,
                                 ),
-                        elevation: 0.0,
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
+                                color: Colors.white,
+                                letterSpacing: 0.0,
+                                fontWeight: FlutterFlowTheme.of(context).titleSmall.fontWeight,
+                                fontStyle: FlutterFlowTheme.of(context).titleSmall.fontStyle,
+                              ),
+                              elevation: 0.0,
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16.0),
+                        Expanded(
+                          child: FFButtonWidget(
+                            onPressed: _launchPayChanguPayment,
+                            text: 'Pay with PayChangu',
+                            icon: const Icon(
+                              Icons.payment_rounded,
+                              size: 20.0,
+                            ),
+                            options: FFButtonOptions(
+                              height: 50.0,
+                              padding: const EdgeInsetsDirectional.fromSTEB(16.0, 0.0, 16.0, 0.0),
+                              iconPadding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                              color: const Color(0xFF10B981), // Green color for PayChangu
+                              textStyle: FlutterFlowTheme.of(context).titleSmall.override(
+                                font: GoogleFonts.interTight(
+                                  fontWeight: FlutterFlowTheme.of(context).titleSmall.fontWeight,
+                                  fontStyle: FlutterFlowTheme.of(context).titleSmall.fontStyle,
+                                ),
+                                color: Colors.white,
+                                letterSpacing: 0.0,
+                                fontWeight: FlutterFlowTheme.of(context).titleSmall.fontWeight,
+                                fontStyle: FlutterFlowTheme.of(context).titleSmall.fontStyle,
+                              ),
+                              elevation: 0.0,
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
