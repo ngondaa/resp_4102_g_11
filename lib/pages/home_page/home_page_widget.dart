@@ -46,36 +46,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     super.dispose();
   }
 
-  Future<void> _handlePaymentSuccess(Map<String, dynamic> response) async {
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
 
-      final verification = await PayChanguService.instance.verifyTransaction(response['tx_ref']);
-      final isValid = PayChanguService.instance.validatePayment(
-        verification,
-        expectedTxRef: response['tx_ref'],
-        expectedCurrency: 'MWK',
-        expectedAmount: double.parse(_model.textController2?.text ?? '0'), // Amount in MWK
-      );
-
-      Navigator.of(context).pop(); // Close loading dialog
-
-      if (isValid) {
-        _showSuccessDialog(verification);
-      } else {
-        _showErrorDialog('Payment validation failed');
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
-      _showErrorDialog('Verification failed: $e');
-    }
-  }
-
-  void _showSuccessDialog(dynamic verification) {
+  void _showSuccessDialog(dynamic response) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -84,9 +56,16 @@ class _HomePageWidgetState extends State<HomePageWidget> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Amount: ${verification.data.amount} ${verification.data.currency}'),
-            Text('Transaction ID: ${verification.data.txRef}'),
-            Text('Status: ${verification.data.status}'),
+            if (response is PayChanguChargeResponse) ...[
+              Text('Order Reference: ${response.orderReference ?? 'N/A'}'),
+              Text('3DS Required: ${response.requires3dsAuth ? 'Yes' : 'No'}'),
+              if (response.message != null) Text('Message: ${response.message}'),
+            ] else if (response is PayChanguVerificationResponse) ...[
+              Text('Charge ID: ${response.chargeId ?? 'N/A'}'),
+              Text('Amount: ${response.amount ?? 'N/A'} ${response.currency ?? 'MWK'}'),
+              Text('Status: ${response.status ?? 'N/A'}'),
+              if (response.message != null) Text('Message: ${response.message}'),
+            ],
           ],
         ),
         actions: [
@@ -151,45 +130,201 @@ class _HomePageWidgetState extends State<HomePageWidget> {
       return;
     }
 
-    try {
-      final request = PayChanguService.instance.createPaymentRequest(
-        merchantId: merchantId,
-        amount: amount,
-        firstName: 'Customer', // You might want to collect this from user
-        lastName: 'Name', // You might want to collect this from user
-        email: 'customer@example.com', // You might want to collect this from user
-      );
+    // Show card details dialog
+    _showCardDetailsDialog(merchantId, amount);
+  }
 
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: const Text('Payment'),
-              backgroundColor: FlutterFlowTheme.of(context).primary,
-            ),
-            body: PayChanguService.instance.launchPayment(
-              request: request,
-              onSuccess: _handlePaymentSuccess,
-              onError: (error) {
-                Navigator.of(context).pop();
-                _showErrorDialog('Payment failed: $error');
-              },
-              onCancel: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Payment cancelled')),
-                );
-              },
-            ),
+  void _showCardDetailsDialog(String merchantId, double amount) {
+    final cardNumberController = TextEditingController();
+    final expiryController = TextEditingController();
+    final cvvController = TextEditingController();
+    final cardholderNameController = TextEditingController();
+    final emailController = TextEditingController(text: 'customer@example.com');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Card Payment Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: cardNumberController,
+                decoration: const InputDecoration(
+                  labelText: 'Card Number',
+                  hintText: '4242424242424242',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: expiryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Expiry (MM/YY)',
+                        hintText: '12/30',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: cvvController,
+                      decoration: const InputDecoration(
+                        labelText: 'CVV',
+                        hintText: '123',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: cardholderNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Cardholder Name',
+                  hintText: 'John Doe',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'customer@example.com',
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ],
           ),
         ),
-      );
-    } catch (e) {
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _processCardPayment(
+                merchantId,
+                amount,
+                cardNumberController.text,
+                expiryController.text,
+                cvvController.text,
+                cardholderNameController.text,
+                emailController.text,
+              );
+            },
+            child: const Text('Pay'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _processCardPayment(
+    String merchantId,
+    double amount,
+    String cardNumber,
+    String expiry,
+    String cvv,
+    String cardholderName,
+    String email,
+  ) async {
+    if (cardNumber.isEmpty || expiry.isEmpty || cvv.isEmpty || cardholderName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error creating payment request: $e'),
+        const SnackBar(
+          content: Text('Please fill in all card details'),
         ),
       );
+      return;
+    }
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final response = await PayChanguService.instance.chargeCard(
+        cardNumber: cardNumber,
+        expiry: expiry,
+        cvv: cvv,
+        cardholderName: cardholderName,
+        amount: amount,
+        currency: 'MWK',
+        email: email,
+        chargeId: 'charge_${merchantId}_${DateTime.now().millisecondsSinceEpoch}',
+        redirectUrl: 'https://example.com/redirect',
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (response.success) {
+        if (response.requires3dsAuth && response.auth3dsLink != null) {
+          // Handle 3DS authentication
+          _handle3dsAuthentication(response.auth3dsLink!, response.orderReference!);
+        } else {
+          // Payment successful without 3DS
+          _showSuccessDialog(response);
+        }
+      } else {
+        _showErrorDialog(response.message ?? 'Payment failed');
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      _showErrorDialog('Payment error: $e');
+    }
+  }
+
+  void _handle3dsAuthentication(String auth3dsLink, String orderReference) {
+    // For now, just show a message about 3DS authentication
+    // In a real app, you would open the 3DS link in a web view
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('3DS Authentication Required'),
+        content: Text('Please complete 3DS authentication at: $auth3dsLink'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // In a real app, you would verify the payment after 3DS
+              _verifyPayment(orderReference);
+            },
+            child: const Text('I have completed 3DS'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _verifyPayment(String orderReference) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final verification = await PayChanguService.instance.verifyCharge(orderReference);
+      
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (verification.success) {
+        _showSuccessDialog(verification);
+      } else {
+        _showErrorDialog(verification.message ?? 'Payment verification failed');
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      _showErrorDialog('Verification error: $e');
     }
   }
 

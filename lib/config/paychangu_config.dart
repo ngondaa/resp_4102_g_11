@@ -13,12 +13,13 @@ class AppPayChanguConfig {
   static const String returnUrl = 'https://your-domain.com/return';
  
   // Default customer information
-  static const String defaultFirstName = 'Customer';
-  static const String defaultLastName = 'Name';
-  static const String defaultEmail = 'customer@example.com';
+  static const String defaultFirstName = 'Albert';
+  static const String defaultLastName = 'Ngonda';
+  static const String defaultEmail = 'ngondaamn@gmail.com';
  
   // Currency configuration
-  static const String currency = 'MWK'; // Malawian Kwacha
+  static const String currency = 'MWK'; // Malawian Kwacha (request format)
+  static const String currencyResponse = 'MK'; // Response format from API
  
   // Environment detection - automatically uses test mode in debug builds
   static bool get isTestMode => kDebugMode;
@@ -31,8 +32,8 @@ class AppPayChanguConfig {
   // PayChangu payment base URLs
   static String get basePaymentUrl {
     return isTestMode 
-        ? 'https://api.paychangu.com/test/payment' 
-        : 'https://api.paychangu.com/payment';
+        ? 'https://api.paychangu.com/direct-charge/payments/initialize' 
+        : 'https://api.paychangu.com/direct-charge/payments/initialize';
   }
 
   // Webhook configuration (for backend integration)

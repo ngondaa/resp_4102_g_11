@@ -5,6 +5,7 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '/services/paychangu_service.dart';
 import 'display_qr_page_model.dart';
 export 'display_qr_page_model.dart';
@@ -29,6 +30,8 @@ class DisplayQrPageWidget extends StatefulWidget {
 class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
   late DisplayQrPageModel _model;
   late String paymentUrl;
+  PayChanguBankTransferResponse? bankTransferResponse;
+  bool isLoading = true;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -41,33 +44,92 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
     _model.merchantId = widget.merchantId ?? '';
     _model.transactionAmount = widget.transactionAmount ?? '';
     
-    // Generate PayChangu payment URL for QR code
-    _generatePaymentUrl();
+    // Initialize bank transfer payment
+    _initializeBankTransfer();
     
     // Also generate the traditional QR data
     _model.generateQrData();
   }
 
-  void _generatePaymentUrl() {
+  Future<void> _initializeBankTransfer() async {
     try {
       final amount = double.tryParse(_model.transactionAmount) ?? 0.0;
       if (amount > 0 && PayChanguService.instance.isInitialized) {
-        paymentUrl = PayChanguService.instance.generatePaymentUrl(
-          merchantId: _model.merchantId,
+        final chargeId = 'PTC${_model.merchantId}_${DateTime.now().millisecondsSinceEpoch}';
+        
+        bankTransferResponse = await PayChanguService.instance.initializeBankTransfer(
           amount: amount,
+          chargeId: chargeId,
           firstName: 'Albert',
           lastName: 'Ngonda',
           email: 'ngondaamn@gmail.com',
         );
+        
+        if (bankTransferResponse != null && bankTransferResponse!.status == 'success') {
+          // Generate QR code with bank account details
+          paymentUrl = _generateBankTransferQR();
+        } else {
+          // Fallback to traditional QR data
+          paymentUrl = _model.qrData;
+        }
       } else {
         // Fallback to traditional QR data
         paymentUrl = _model.qrData;
       }
     } catch (e) {
-      debugPrint('Error generating payment URL: $e');
+      debugPrint('Error initializing bank transfer: $e');
       // Fallback to traditional QR data
       paymentUrl = _model.qrData;
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
+  }
+
+  String _generateBankTransferQR() {
+    if (bankTransferResponse?.paymentAccountDetails != null) {
+      // Generate a PayChangu payment URL that customers can scan
+      final amount = double.tryParse(_model.transactionAmount) ?? 0.0;
+      return PayChanguService.instance.generatePaymentUrl(
+        merchantId: _model.merchantId,
+        amount: amount,
+        firstName: 'Albert',
+        lastName: 'Ngonda',
+        email: 'ngondaamn@gmail.com',
+      );
+    }
+    return _model.qrData;
+  }
+
+  Widget _buildBankDetail(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100.0,
+            child: Text(
+              '$label:',
+              style: FlutterFlowTheme.of(context).bodyMedium.override(
+                font: GoogleFonts.inter(fontWeight: FontWeight.w500),
+                color: Colors.green.shade700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: FlutterFlowTheme.of(context).bodyMedium.override(
+                font: GoogleFonts.inter(),
+                color: Colors.green.shade800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -219,21 +281,32 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                                   ),
                                 ),
                                 child: _model.qrVisible
-                                    ? (paymentUrl.isNotEmpty
-                                        ? Padding(
-                                            padding: const EdgeInsets.all(16.0),
-                                            child: QrImageView(
-                                              data: paymentUrl,
-                                              version: QrVersions.auto,
-                                              size: 268.0,
-                                              backgroundColor: Colors.white,
-                                              foregroundColor: Colors.black,
-                                              errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                    ? (isLoading
+                                        ? const Center(
+                                            child: Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                CircularProgressIndicator(),
+                                                SizedBox(height: 16.0),
+                                                Text('Initializing payment...'),
+                                              ],
                                             ),
                                           )
-                                        : const Center(
-                                            child: CircularProgressIndicator(),
-                                          ))
+                                        : (paymentUrl.isNotEmpty
+                                            ? Padding(
+                                                padding: const EdgeInsets.all(16.0),
+                                                child: QrImageView(
+                                                  data: paymentUrl,
+                                                  version: QrVersions.auto,
+                                                  size: 268.0,
+                                                  backgroundColor: Colors.white,
+                                                  foregroundColor: Colors.black,
+                                                  errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                                ),
+                                              )
+                                            : const Center(
+                                                child: CircularProgressIndicator(),
+                                              )))
                                     : Center(
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
@@ -267,13 +340,99 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                                       ),
                               ),
                               
+                              // Bank Transfer Details (outside QR container)
+                              if (bankTransferResponse?.paymentAccountDetails != null) ...[
+                                const SizedBox(height: 16.0),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(16.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Bank Transfer Details',
+                                        style: FlutterFlowTheme.of(context).titleSmall.override(
+                                          font: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                                          color: Colors.green.shade800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8.0),
+                                      _buildBankDetail('Bank', bankTransferResponse!.paymentAccountDetails!.bankName),
+                                      _buildBankDetail('Account Number', bankTransferResponse!.paymentAccountDetails!.accountNumber),
+                                      _buildBankDetail('Account Name', bankTransferResponse!.paymentAccountDetails!.accountName),
+                                      _buildBankDetail('Amount', '${_model.transactionAmount} MWK'),
+                                      if (bankTransferResponse!.transaction != null)
+                                        _buildBankDetail('Reference', bankTransferResponse!.transaction!.chargeId),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16.0),
+                                // Pay with PayChangu button
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      // Open PayChangu payment URL
+                                      final paymentUrl = PayChanguService.instance.generatePaymentUrl(
+                                        merchantId: _model.merchantId,
+                                        amount: double.tryParse(_model.transactionAmount) ?? 0.0,
+                                        firstName: 'Albert',
+                                        lastName: 'Ngonda',
+                                        email: 'ngondaamn@gmail.com',
+                                      );
+                                      
+                                      try {
+                                        final uri = Uri.parse(paymentUrl);
+                                        if (await canLaunchUrl(uri)) {
+                                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Could not open PayChangu payment: $paymentUrl'),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Error opening payment: $e'),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    icon: const Icon(Icons.payment, color: Colors.white),
+                                    label: const Text(
+                                      'Pay with PayChangu',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade600,
+                                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8.0),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              
                               const SizedBox(height: 16.0),
                               
                               // Instructions
                               Text(
-                                PayChanguService.instance.isInitialized
-                                    ? 'Scan this QR code with any mobile money app or camera to make payment via PayChangu'
-                                    : 'Scan this QR code with any device to view payment details',
+                                bankTransferResponse?.paymentAccountDetails != null
+                                    ? 'Scan the QR code or click "Pay with PayChangu" to complete your payment. You can also transfer directly to the bank account details above.'
+                                    : PayChanguService.instance.isInitialized
+                                        ? 'Scan this QR code with any mobile money app or camera to make payment via PayChangu'
+                                        : 'Scan this QR code with any device to view payment details',
                                 style: FlutterFlowTheme.of(context).bodyMedium.override(
                                   font: GoogleFonts.inter(),
                                   color: FlutterFlowTheme.of(context).secondaryText,
@@ -434,11 +593,13 @@ class _DisplayQrPageWidgetState extends State<DisplayQrPageWidget> {
                       const SizedBox(width: 12.0),
                       Expanded(
                         child: FFButtonWidget(
-                          onPressed: () {
+                          onPressed: () async {
                             // Refresh the QR code
-                            _generatePaymentUrl();
+                            setState(() {
+                              isLoading = true;
+                            });
+                            await _initializeBankTransfer();
                             _model.generateQrData();
-                            setState(() {});
                             
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
