@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'login_page_model.dart';
 export 'login_page_model.dart';
 
+import '../../services/merchant_auth_service.dart';
+
 class LoginPageWidget extends StatefulWidget {
   const LoginPageWidget({super.key});
 
@@ -21,6 +23,11 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
   late LoginPageModel _model;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // initialize merchant service object
+  final MerchantAuthService merchantAuthService = MerchantAuthService();
+
+  late final Map<String, dynamic>? profileData;
 
   @override
   void initState() {
@@ -63,8 +70,8 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 60.0),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                          0.0, 0.0, 0.0, 60.0),
                       child: Text(
                         'Merchant login',
                         style: FlutterFlowTheme.of(context)
@@ -85,8 +92,8 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                       ),
                     ),
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 32.0),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                          0.0, 0.0, 0.0, 32.0),
                       child: SizedBox(
                         width: 360.0,
                         child: TextFormField(
@@ -192,8 +199,8 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                       ),
                     ),
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 32.0),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                          0.0, 0.0, 0.0, 32.0),
                       child: SizedBox(
                         width: 360.0,
                         child: TextFormField(
@@ -312,8 +319,8 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                       ),
                     ),
                     Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 32.0),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                          0.0, 0.0, 0.0, 32.0),
                       child: FFButtonWidget(
                         onPressed: () {
                           print('Button pressed ...');
@@ -350,28 +357,26 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                     ),
                     FFButtonWidget(
                       onPressed: () async {
-                        final merchantId = _model.textController1?.text.trim() ?? '';
+                        final email = _model.textController1?.text.trim() ?? '';
                         final password = _model.textController2?.text ?? '';
-                        
-                        if (merchantId.isEmpty || password.isEmpty) {
+
+                        if (email.isEmpty || password.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter your email and password.')),
+                            const SnackBar(
+                                content: Text(
+                                    'Please enter your email and password.')),
                           );
                           return;
                         }
-                        
-                        
-                        try {
-                          // Store merchant ID for use in other pages
-                          // For now, just navigate to home page without authentication
-                          // TODO: Implement proper Supabase authentication
+
+                        // send login request to supabase
+                        final success = await merchantAuthService.loginMerchant(
+                            email, password);
+
+                        if (success) {
                           if (context.mounted) {
-                            context.pushNamed(HomePageWidget.routeName, extra: {'merchantId': merchantId});
+                            context.pushNamed(HomePageWidget.routeName,);
                           }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Unexpected error.')),
-                          );
                         }
                       },
                       text: 'Login',
@@ -380,8 +385,8 @@ class _LoginPageWidgetState extends State<LoginPageWidget> {
                         height: 50.0,
                         padding: const EdgeInsetsDirectional.fromSTEB(
                             16.0, 0.0, 16.0, 0.0),
-                        iconPadding:
-                            const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                        iconPadding: const EdgeInsetsDirectional.fromSTEB(
+                            0.0, 0.0, 0.0, 0.0),
                         color: FlutterFlowTheme.of(context).primary,
                         textStyle:
                             FlutterFlowTheme.of(context).titleSmall.override(

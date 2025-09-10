@@ -19,9 +19,6 @@ Future<void> main() async {
 
   await FlutterFlowTheme.initialize();
 
-  // Temporarily comment out Supabase initialization to get app running
-  // TODO: Add your actual Supabase credentials here
-
   await Supabase.initialize(
     url: 'https://yqcxumvpvosrqwbcdcun.supabase.co',
     anonKey:

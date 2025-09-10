@@ -5,13 +5,12 @@ import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/merchant_auth_service.dart';
 import 'home_page_model.dart';
 export 'home_page_model.dart';
 
 class HomePageWidget extends StatefulWidget {
-  const HomePageWidget({super.key, this.merchantId});
-
-  final String? merchantId;
+  const HomePageWidget({super.key});
 
   static String routeName = 'HomePage';
   static String routePath = '/homePage';
@@ -25,13 +24,17 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
+  final MerchantAuthService merchantAuthService = MerchantAuthService();
+  Map<String, dynamic>? profile;
+  String? merchantId;
+
   @override
   void initState() {
     super.initState();
+    _loadProfile();
     _model = createModel(context, () => HomePageModel());
 
     // Use the merchant ID from login or default
-    _model.textController1 ??= TextEditingController(text: widget.merchantId ?? 'MRCH0002');
     _model.textFieldFocusNode1 ??= FocusNode();
 
     _model.textController2 ??= TextEditingController();
@@ -43,6 +46,16 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     _model.dispose();
 
     super.dispose();
+  }
+
+  Future<void> _loadProfile() async {
+    final profileData = await merchantAuthService.getMerchantProfile();
+    setState(() {
+      profile = profileData;
+      merchantId = profile?['merchant_id'];
+      _model.textController1 ??= TextEditingController(text: merchantId);
+
+    });
   }
 
   @override
@@ -66,7 +79,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 mainAxisSize: MainAxisSize.max,
                 children: [
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 8.0, 0.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 8.0, 0.0),
                     child: Icon(
                       Icons.edit_note_rounded,
                       color: FlutterFlowTheme.of(context).primaryText,
@@ -103,7 +117,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
               ),
               centerTitle: true,
               expandedTitleScale: 1.0,
-              titlePadding: const EdgeInsetsDirectional.fromSTEB(40.0, 0.0, 0.0, 0.0),
+              titlePadding:
+                  const EdgeInsetsDirectional.fromSTEB(40.0, 0.0, 0.0, 0.0),
             ),
             elevation: 0.0,
           ),
@@ -120,7 +135,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 8.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 8.0),
                     child: Text(
                       'Merchant ID',
                       style: FlutterFlowTheme.of(context).bodyMedium.override(
@@ -226,8 +242,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                     ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsetsDirectional.fromSTEB(0.0, 32.0, 0.0, 8.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 32.0, 0.0, 8.0),
                     child: Text(
                       'Transaction amount',
                       style: FlutterFlowTheme.of(context).bodyMedium.override(
@@ -344,22 +360,24 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                     ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsetsDirectional.fromSTEB(0.0, 32.0, 0.0, 0.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 32.0, 0.0, 0.0),
                     child: FFButtonWidget(
                       onPressed: () async {
                         final merchantId = _model.textController1?.text ?? '';
-                        final transactionAmount = _model.textController2?.text ?? '';
-                        
+                        final transactionAmount =
+                            _model.textController2?.text ?? '';
+
                         if (merchantId.isEmpty || transactionAmount.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Please fill in both Merchant ID and Transaction Amount'),
+                              content: Text(
+                                  'Please fill in both Merchant ID and Transaction Amount'),
                             ),
                           );
                           return;
                         }
-                        
+
                         context.pushNamed(
                           DisplayQrPageWidget.routeName,
                           extra: {
@@ -378,8 +396,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                         height: 50.0,
                         padding: const EdgeInsetsDirectional.fromSTEB(
                             16.0, 0.0, 16.0, 0.0),
-                        iconPadding:
-                            const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 0.0),
+                        iconPadding: const EdgeInsetsDirectional.fromSTEB(
+                            0.0, 0.0, 0.0, 0.0),
                         color: FlutterFlowTheme.of(context).primary,
                         textStyle:
                             FlutterFlowTheme.of(context).titleSmall.override(
